@@ -1,35 +1,68 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { COLORS } from '../../src/constants/colors';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
-  return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
-    </Tabs>
-  );
+    return (
+        <Tabs
+            screenOptions={{
+                headerShown: false,
+                tabBarStyle: {
+                    backgroundColor: '#FFFFFF',
+                    borderTopColor: '#E5E7EB',
+                    height: 70,
+                    paddingBottom: 10,
+                    paddingTop: 10,
+                },
+                tabBarActiveTintColor: COLORS.primaryDark,
+                tabBarInactiveTintColor: '#9CA3AF',
+            }}
+        >
+            <Tabs.Screen
+                name="index"
+                options={{
+                    title: 'Home',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="home" size={24} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="favourite"
+                options={{
+                    title: 'Favourite',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="heart" size={24} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="wallet"
+                options={{
+                    title: 'Wallet',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="wallet" size={24} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="offer"
+                options={{
+                    title: 'Offer',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="pricetag" size={24} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="account"
+                options={{
+                    title: 'Profile',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="person" size={24} color={color} />
+                    ),
+                }}
+            />
+        </Tabs>
+    );
 }
