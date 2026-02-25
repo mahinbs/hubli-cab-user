@@ -16,21 +16,21 @@ interface OnboardingSlide {
 const SLIDES: OnboardingSlide[] = [
     {
         id: '1',
-        title: 'Anywhere you are',
-        description: 'Sell houses easily with the help of Listenoryx and to make this line big I am writing more.',
-        icon: 'map-outline',
+        title: 'Welcome to HubliCab',
+        description: 'Your localized ride-hailing app. Fast, secure, and intuitive cab booking across the city.',
+        icon: 'location-outline',
     },
     {
         id: '2',
-        title: 'At anytime',
-        description: 'Sell houses easily with the help of Listenoryx and to make this line big I am writing more.',
-        icon: 'time-outline',
+        title: 'Fair Fares Everyday',
+        description: 'Our revolutionary 10 paise per km commission ensures maximum earnings for drivers and lower fares for you.',
+        icon: 'wallet-outline',
     },
     {
         id: '3',
-        title: 'Book your car',
-        description: 'Sell houses easily with the help of Listenoryx and to make this line big I am writing more.',
-        icon: 'car-sport-outline',
+        title: 'Safe & Reliable',
+        description: 'Real-time tracking, SOS safety suite, and secure payment options for a worry-free journey.',
+        icon: 'shield-checkmark-outline',
     },
 ];
 

@@ -8,22 +8,11 @@ export const MOCK_LOCATIONS = [
 
 export const VEHICLE_TYPES = [
     {
-        id: 'bike',
-        name: 'Bike',
-        image: 'https://cdn-icons-png.flaticon.com/512/3082/3082383.png', // Placeholder
-        baseFare: 20,
-        perKm: 5,
-        eta: '2 min',
-    },
-    {
         id: 'auto',
         name: 'Auto',
         image: 'https://cdn-icons-png.flaticon.com/512/3082/3082383.png', // Placeholder
         baseFare: 30,
-        perKm: 10, // 10 paise mentioned but that's commission? or rate? Assuming regular rate here + comm logic
-        // User said "fixed commission of 10 paise per km". Note: 10 paise is tiny (0.1 INR). 
-        // Maybe they meant the *App Fee* is 10p/km?
-        // I will stick to realistic fares for the USER display, and maybe show 'Commission: ₹0.10/km' in driver app.
+        perKm: 10, // Rider rate (commission is 10 paise/km)
         eta: '4 min',
     },
     {
@@ -31,7 +20,7 @@ export const VEHICLE_TYPES = [
         name: 'Mini',
         image: 'https://cdn-icons-png.flaticon.com/512/3082/3082383.png',
         baseFare: 50,
-        perKm: 12,
+        perKm: 12, // Rider rate
         eta: '6 min',
     },
     {
@@ -39,7 +28,15 @@ export const VEHICLE_TYPES = [
         name: 'Sedan',
         image: 'https://cdn-icons-png.flaticon.com/512/3082/3082383.png',
         baseFare: 70,
-        perKm: 15,
+        perKm: 15, // Rider rate
         eta: '8 min',
+    },
+    {
+        id: 'suv',
+        name: 'SUV',
+        image: 'https://cdn-icons-png.flaticon.com/512/3082/3082383.png',
+        baseFare: 100,
+        perKm: 20, // Rider rate
+        eta: '10 min',
     },
 ];

@@ -1,7 +1,6 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -38,10 +37,10 @@ export default function SplashScreen() {
       <Animated.View style={[styles.content, animatedStyle]}>
         <View style={styles.logoContainer}>
           <View style={styles.iconCircle}>
-            <MaterialCommunityIcons name={"steering" as any} size={60} color={COLORS.primaryDark} />
+            <Image source={require('../assets/app-logo/hubliCab-logo.png')} style={{ width: 80, height: 80, borderRadius: 40 }} resizeMode="contain" />
           </View>
         </View>
-        <Text style={styles.title}>Taxi App</Text>
+        <Text style={styles.title}>HubliCab</Text>
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#FFFFFF" />
         </View>

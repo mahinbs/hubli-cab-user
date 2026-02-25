@@ -17,7 +17,7 @@ export default function LiveTrackingScreen() {
     const [timer, setTimer] = useState(215); // 3:35 in seconds
 
     useEffect(() => {
-        let statusTimer: NodeJS.Timeout;
+        let statusTimer: ReturnType<typeof setTimeout>;
 
         if (status === 'ARRIVING') {
             statusTimer = setTimeout(() => setStatus('ARRIVED'), 5000);

@@ -20,10 +20,9 @@ export default function WelcomeScreen() {
         <ScreenWrapper style={styles.container}>
             <View style={styles.content}>
                 <View style={styles.illustrationContainer}>
-                    {/* Placeholder for the illustration in the image */}
                     <View style={styles.illustrationPlaceholder}>
                         <Image
-                            source={{ uri: 'https://img.freepik.com/free-vector/taxi-app-concept-illustration_114360-6429.jpg' }}
+                            source={require('../../assets/app-logo/hubliCab-logo.png')}
                             style={styles.image}
                             resizeMode="contain"
                         />
@@ -31,8 +30,8 @@ export default function WelcomeScreen() {
                 </View>
 
                 <View style={styles.textContainer}>
-                    <Text style={styles.title}>Welcome</Text>
-                    <Text style={styles.subtitle}>Have a better sharing experience</Text>
+                    <Text style={styles.title}>Welcome to HubliCab</Text>
+                    <Text style={styles.subtitle}>A seamless and affordable ride experience.</Text>
                 </View>
 
                 <View style={styles.footer}>
