@@ -1,9 +1,11 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { View, Text, Image, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import ScreenWrapper from '../../src/components/ui/ScreenWrapper';
 import { COLORS, SIZES } from '../../src/constants/colors';
+import { supabase } from '../../supabase/client';
+import { signOut } from '../../supabase/auth';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 const MENU_ITEMS = [
     { id: '1', title: 'Edit Profile', icon: 'person-outline', route: '/profile/edit' },
@@ -14,19 +16,51 @@ const MENU_ITEMS = [
     { id: '6', title: 'About Us', icon: 'information-circle-outline', route: '' },
     { id: '7', title: 'Settings', icon: 'settings-outline', route: '' },
     { id: '8', title: 'Help and Support', icon: 'help-circle-outline', route: '' },
-    { id: '9', title: 'Logout', icon: 'log-out-outline', route: '/auth/signin' },
+    { id: '9', title: 'Logout', icon: 'log-out-outline', route: '/auth/login' },
 ];
 
 export default function AccountScreen() {
     const router = useRouter();
+    const [profile, setProfile] = React.useState<any>(null);
+    const [loading, setLoading] = React.useState(true);
 
-    const handlePress = (item: any) => {
-        if (item.route) {
-            if (item.id === '9') {
-                router.replace(item.route);
-            } else {
-                router.push(item.route);
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchProfile();
+        }, [])
+    );
+
+    const fetchProfile = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                if (data) setProfile(data);
             }
+        } catch (error) {
+            console.error('Error fetching profile:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handlePress = async (item: any) => {
+        if (item.id === '9') {
+            try {
+                await signOut();
+                router.replace('/auth/login');
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
+            return;
+        }
+
+        if (item.route) {
+            router.push(item.route);
         }
     };
 
@@ -35,12 +69,13 @@ export default function AccountScreen() {
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.header}>
                     <Image
-                        source={{ uri: 'https://img.freepik.com/free-photo/young-bearded-man-with-striped-shirt_273609-5677.jpg' }}
+                        source={{ uri: profile?.avatar_url || 'https://img.freepik.com/free-photo/young-bearded-man-with-striped-shirt_273609-5677.jpg' }}
                         style={styles.avatar}
                     />
                     <View style={styles.userInfo}>
-                        <Text style={styles.userName}>Nate Samson</Text>
-                        <Text style={styles.userEmail}>nate@email.com</Text>
+                        <Text style={styles.userName}>{profile?.full_name || 'Loading...'}</Text>
+                        <Text style={styles.userEmail}>{profile?.phone_number || 'No phone set'}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: 'bold', color: COLORS.primaryDark, marginTop: 4, letterSpacing: 0.5 }}>ROLE: {profile?.role ? profile.role.toUpperCase() : 'RIDER'}</Text>
                     </View>
                 </View>
 

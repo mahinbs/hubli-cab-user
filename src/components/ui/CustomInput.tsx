@@ -25,6 +25,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
     style,
     secureTextEntry,
     onPress,
+    pointerEvents: _pointerEvents,
     ...props
 }) => {
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -43,14 +44,12 @@ const CustomInput: React.FC<CustomInputProps> = ({
     return (
         <View style={[styles.container, containerStyle]}>
             {label && <Text style={styles.label}>{label}</Text>}
-
             <InputWrapper
                 activeOpacity={onPress ? 0.7 : 1}
                 onPress={onPress}
-                style={[styles.inputContainer, error && styles.errorBorder]}
+                style={[styles.inputContainer, error ? styles.errorBorder : null]}
             >
                 {leftComponent}
-
                 {iconName && (
                     <Ionicons
                         name={iconName}
@@ -59,16 +58,18 @@ const CustomInput: React.FC<CustomInputProps> = ({
                         style={styles.icon}
                     />
                 )}
-
                 <TextInput
-                    style={[styles.input, style, onPress && { pointerEvents: 'none' }]}
+                    style={[
+                        styles.input, 
+                        style, 
+                        onPress ? { pointerEvents: 'none' } : null
+                    ]}
                     placeholderTextColor={COLORS.textMuted}
                     selectionColor={COLORS.primary}
                     secureTextEntry={isPassword && !isPasswordVisible}
                     editable={!onPress}
                     {...props}
                 />
-
                 {(rightIconName || isPassword) && (
                     <TouchableOpacity onPress={handleRightIconPress}>
                         <Ionicons
@@ -78,12 +79,10 @@ const CustomInput: React.FC<CustomInputProps> = ({
                         />
                     </TouchableOpacity>
                 )}
-
                 {onPress && !rightIconName && !isPassword && (
                     <Ionicons name="chevron-down" size={20} color={COLORS.textMuted} />
                 )}
             </InputWrapper>
-
             {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
     );

@@ -16,7 +16,10 @@ export default function SelectAddressScreen() {
     const insets = useSafeAreaInsets();
 
     const handleConfirm = () => {
-        router.push('/booking/transport-selection');
+        router.push({
+            pathname: '/booking/transport-selection',
+            params: { pickup, destination }
+        });
     };
 
     return (

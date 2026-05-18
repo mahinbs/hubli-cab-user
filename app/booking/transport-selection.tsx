@@ -17,11 +17,17 @@ interface TransportCategory {
     type: string;
 }
 
+import { useLocalSearchParams } from 'expo-router';
+
 export default function TransportSelectionScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
 
     const handleSelect = (category: TransportCategory) => {
-        router.push('/booking/available-rides');
+        router.push({
+            pathname: '/booking/available-rides',
+            params: { ...params, category: category.id }
+        });
     };
 
     return (

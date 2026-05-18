@@ -5,18 +5,49 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import ScreenWrapper from '../../src/components/ui/ScreenWrapper';
 import Sidebar from '../../src/components/ui/Sidebar';
 import { COLORS, SIZES } from '../../src/constants/colors';
+import { supabase } from '../../supabase/client';
 
-const TRANSACTIONS = [
-    { id: '1', name: 'Welton', date: 'Today at 09:20 am', amount: '-$570.00', icon: 'wallet-outline' },
-    { id: '2', name: 'Natham', date: 'Today at 09:20 am', amount: '$570.00', icon: 'checkmark-circle-outline' },
-    { id: '3', name: 'Welton', date: 'Today at 09:20 am', amount: '-$570.00', icon: 'wallet-outline' },
-    { id: '4', name: 'Natham', date: 'Today at 09:20 am', amount: '$570.00', icon: 'checkmark-circle-outline' },
-    { id: '5', name: 'Natham', date: 'Today at 09:20 am', amount: '$570.00', icon: 'checkmark-circle-outline' },
-];
+// Data now fetched from Supabase transactions table
 
 export default function WalletScreen() {
     const router = useRouter();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [transactions, setTransactions] = useState<any[]>([]);
+    const [balance, setBalance] = useState(0);
+    const [expend, setExpend] = useState(0);
+    const [loading, setLoading] = useState(true);
+
+    React.useEffect(() => {
+        fetchWalletData();
+    }, []);
+
+    const fetchWalletData = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data, error } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (data) {
+                setTransactions(data);
+                const totalBalance = data.reduce((acc, curr) => 
+                    curr.type === 'deposit' ? acc + parseFloat(curr.amount) : acc - parseFloat(curr.amount), 0);
+                const totalSpent = data.reduce((acc, curr) => 
+                    curr.type === 'spend' ? acc + parseFloat(curr.amount) : acc, 0);
+                
+                setBalance(totalBalance);
+                setExpend(totalSpent);
+            }
+        } catch (error) {
+            console.error('Wallet fetch error:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <ScreenWrapper
@@ -37,11 +68,11 @@ export default function WalletScreen() {
 
             <View style={styles.cardsRow}>
                 <View style={[styles.balanceCard, { backgroundColor: COLORS.primary + '20' }]}>
-                    <Text style={styles.amountText}>$500</Text>
+                    <Text style={styles.amountText}>₹{balance.toLocaleString()}</Text>
                     <Text style={styles.label}>Available Balance</Text>
                 </View>
                 <View style={[styles.balanceCard, { backgroundColor: '#F3F4F6' }]}>
-                    <Text style={styles.amountText}>$200</Text>
+                    <Text style={styles.amountText}>₹{expend.toLocaleString()}</Text>
                     <Text style={styles.label}>Total Expend</Text>
                 </View>
             </View>
@@ -54,20 +85,24 @@ export default function WalletScreen() {
             </View>
 
             <FlatList
-                data={TRANSACTIONS}
+                data={transactions}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.listContent}
                 renderItem={({ item }) => (
                     <View style={styles.transactionItem}>
-                        <View style={styles.iconCircle}>
-                            <Ionicons name={item.icon as any} size={22} color={item.amount.startsWith('-') ? "#EF4444" : COLORS.success} />
-                        </View>
+                        <div style={styles.iconCircle}>
+                            <Ionicons 
+                                name={item.type === 'spend' ? 'wallet-outline' : 'checkmark-circle-outline'} 
+                                size={22} 
+                                color={item.type === 'spend' ? "#EF4444" : COLORS.success} 
+                            />
+                        </div>
                         <View style={styles.txDetails}>
-                            <Text style={styles.txName}>{item.name}</Text>
-                            <Text style={styles.txDate}>{item.date}</Text>
+                            <Text style={styles.txName}>{item.description || 'Global Transaction'}</Text>
+                            <Text style={styles.txDate}>{new Date(item.created_at).toLocaleString()}</Text>
                         </View>
-                        <Text style={[styles.txAmount, item.amount.startsWith('-') ? styles.negative : styles.positive]}>
-                            {item.amount}
+                        <Text style={[styles.txAmount, item.type === 'spend' ? styles.negative : styles.positive]}>
+                            {item.type === 'spend' ? '-' : '+'}₹{item.amount}
                         </Text>
                     </View>
                 )}

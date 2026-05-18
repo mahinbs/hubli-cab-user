@@ -1,18 +1,38 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeMap from '../../src/components/map/HomeMap';
 import Sidebar from '../../src/components/ui/Sidebar';
 import { COLORS, SIZES } from '../../src/constants/colors';
+import * as Location from 'expo-location';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
     const router = useRouter();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [region, setRegion] = useState<any>(null);
     const insets = useSafeAreaInsets();
+
+    useEffect(() => {
+        (async () => {
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                console.error('Permission to access location was denied');
+                return;
+            }
+
+            let location = await Location.getCurrentPositionAsync({});
+            setRegion({
+                latitude: location.coords.latitude,
+                longitude: location.coords.longitude,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+            });
+        })();
+    }, []);
 
     return (
         <View style={styles.container}>
@@ -20,9 +40,10 @@ export default function HomeScreen() {
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
             {/* Full Screen Map */}
             <View style={styles.mapContainer}>
-                <HomeMap />
+                <HomeMap region={region} />
                 <View style={styles.overlay} />
             </View>
+...
 
             {/* Top Bar */}
             <View style={[styles.topBar, { top: insets.top + 10 }]}>

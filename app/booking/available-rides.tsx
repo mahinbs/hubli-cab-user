@@ -5,30 +5,111 @@ import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
 import CustomButton from '../../src/components/ui/CustomButton';
 import ScreenWrapper from '../../src/components/ui/ScreenWrapper';
 import { COLORS, SIZES } from '../../src/constants/colors';
+import { getVehicleTypes } from '../../supabase/rides';
 
-const RIDES = [
-    { id: '1', name: 'BMW Cabrio', type: 'Automatic | 3 seats | Octane', distance: '800m (5mins away)', image: 'https://img.freepik.com/free-photo/view-luxurious-white-car_23-2149021430.jpg' },
-    { id: '2', name: 'Mustang Shelby GT', type: 'Automatic | 2 seats | Octane', distance: '800m (5mins away)', image: 'https://img.freepik.com/free-photo/modern-luxury-car-white_23-2148906323.jpg' },
-    { id: '3', name: 'BMW i8', type: 'Automatic | 2 seats | Octane', distance: '800m (5mins away)', image: 'https://img.freepik.com/free-photo/fancy-car-outdoor_23-2149303534.jpg' },
-    { id: '4', name: 'Jaguar Silber', type: 'Automatic | 4 seats | Octane', distance: '800m (5mins away)', image: 'https://img.freepik.com/free-photo/silver-luxury-sedan-road_114579-5036.jpg' },
-];
+// Data now fetched from Supabase
+
+import { useLocalSearchParams } from 'expo-router';
+import { supabase } from '../../supabase/client';
 
 export default function AvailableRidesScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
+    const [rides, setRides] = React.useState<any[]>([]);
+    const [loading, setLoading] = React.useState(true);
+
+    React.useEffect(() => {
+        fetchVehicles();
+    }, []);
+
+    const fetchVehicles = async () => {
+        try {
+            // Fetch real profiles with role = 'driver' and join their vehicles!
+            const { data: driverData, error: driverErr } = await supabase
+                .from('profiles')
+                .select('*, vehicles(*)')
+                .eq('role', 'driver');
+            
+            let fetchedRides = [];
+            if (driverData && driverData.length > 0) {
+                fetchedRides = driverData.map(driver => {
+                    const vehicle = driver.vehicles && driver.vehicles[0];
+                    return {
+                        id: driver.id,
+                        name: vehicle?.model || 'Premium Sedan',
+                        type: vehicle?.type || 'sedan',
+                        plate_number: vehicle?.plate_number || 'MH-12-AB-3456',
+                        color: vehicle?.color || 'White',
+                        driver_id: driver.id,
+                        driver_name: driver.full_name || 'Driver',
+                        driver_phone: driver.phone_number || '',
+                        estimated_arrival: '4 min',
+                        image_url: 'https://img.freepik.com/free-photo/modern-luxury-car-white_23-2148906323.jpg'
+                    };
+                });
+            }
+
+            // Fallback: If no drivers are registered in the DB yet, populate beautiful mock vehicles
+            if (fetchedRides.length === 0) {
+                fetchedRides = [
+                    {
+                        id: 'dummy-driver-1',
+                        name: 'Toyota Prius',
+                        type: 'hybrid',
+                        plate_number: 'KA-03-MX-7777',
+                        color: 'Silver',
+                        driver_id: 'dummy-driver-1',
+                        driver_name: 'Amit Kumar',
+                        driver_phone: '+91 9900881122',
+                        estimated_arrival: '3 min',
+                        image_url: 'https://img.freepik.com/free-photo/modern-luxury-car-white_23-2148906323.jpg'
+                    },
+                    {
+                        id: 'dummy-driver-2',
+                        name: 'Honda Civic',
+                        type: 'sedan',
+                        plate_number: 'KA-05-ZZ-9999',
+                        color: 'Black',
+                        driver_id: 'dummy-driver-2',
+                        driver_name: 'Rajesh Patel',
+                        driver_phone: '+91 9888223344',
+                        estimated_arrival: '6 min',
+                        image_url: 'https://img.freepik.com/free-photo/modern-luxury-car-white_23-2148906323.jpg'
+                    }
+                ];
+            }
+
+            setRides(fetchedRides);
+        } catch (error) {
+            console.error('Error fetching vehicles:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleBookNow = (ride: any) => {
         router.push({
             pathname: '/booking/vehicle-details',
-            params: { name: ride.name }
+            params: { 
+                name: ride.name,
+                type: ride.type,
+                plate_number: ride.plate_number,
+                color: ride.color,
+                driver_id: ride.driver_id,
+                driver_name: ride.driver_name,
+                driver_phone: ride.driver_phone,
+                pickup: params.pickup,
+                destination: params.destination
+            }
         });
     };
 
     return (
         <ScreenWrapper style={styles.container} showHeader title="Available cars for ride">
             <View style={styles.content}>
-                <Text style={styles.countText}>{RIDES.length} cars found</Text>
+                <Text style={styles.countText}>{rides.length} cars found</Text>
                 <FlatList
-                    data={RIDES}
+                    data={rides}
                     keyExtractor={(item) => item.id}
                     contentContainerStyle={styles.list}
                     renderItem={({ item }) => (
@@ -36,13 +117,13 @@ export default function AvailableRidesScreen() {
                             <View style={styles.cardHeader}>
                                 <View style={styles.info}>
                                     <Text style={styles.name}>{item.name}</Text>
-                                    <Text style={styles.type}>{item.type}</Text>
+                                    <Text style={styles.type}>{item.type || 'Standard'}</Text>
                                     <View style={styles.distanceRow}>
                                         <Ionicons name="location" size={14} color={COLORS.primaryDark} />
-                                        <Text style={styles.distance}>{item.distance}</Text>
+                                        <Text style={styles.distance}>{item.estimated_arrival || '4 min'} away</Text>
                                     </View>
                                 </View>
-                                <Image source={{ uri: item.image }} style={styles.carImage} resizeMode="cover" />
+                                <Image source={{ uri: item.image_url || 'https://via.placeholder.com/150' }} style={styles.carImage} resizeMode="cover" />
                             </View>
 
                             <View style={styles.actions}>
@@ -58,6 +139,11 @@ export default function AvailableRidesScreen() {
                                     style={styles.halfButton}
                                 />
                             </View>
+                        </View>
+                    )}
+                    ListEmptyComponent={() => !loading && (
+                        <View style={{ padding: 20, alignItems: 'center' }}>
+                            <Text style={{ color: '#6B7280' }}>No vehicles available right now</Text>
                         </View>
                     )}
                 />

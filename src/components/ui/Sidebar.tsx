@@ -52,8 +52,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
     return (
         <View
-            style={[styles.overlay, !isOpen && { height: 0, width: 0 }]}
-            pointerEvents={isOpen ? 'auto' : 'none'}
+            style={[
+                styles.overlay, 
+                !isOpen && { height: 0, width: 0 },
+                { pointerEvents: isOpen ? 'auto' : 'none' }
+            ]}
         >
             <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
             <Animated.View style={[styles.container, { transform: [{ translateX: slideAnim }] }]}>

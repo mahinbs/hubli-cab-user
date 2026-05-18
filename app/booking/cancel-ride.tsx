@@ -76,7 +76,7 @@ export default function CancelRideScreen() {
 
                         <CustomButton
                             title="Back Home"
-                            onPress={() => router.replace('/(tabs)')}
+                            onPress={() => router.replace('/(tabs)/')}
                             style={styles.modalButton}
                         />
                     </View>

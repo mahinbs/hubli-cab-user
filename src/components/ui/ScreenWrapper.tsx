@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { StatusBar, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { StatusBar, StyleSheet, Text, TouchableOpacity, View, ViewStyle, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, SIZES } from '../../constants/colors';
 
@@ -82,11 +82,20 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
-        elevation: 3,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 5,
+            },
+            android: {
+                elevation: 3,
+            },
+            web: {
+                boxShadow: '0px 2px 5px rgba(0, 0, 0, 0.1)',
+            }
+        }),
     },
     title: {
         fontSize: 18,

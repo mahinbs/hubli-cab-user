@@ -4,18 +4,39 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import ScreenWrapper from '../../src/components/ui/ScreenWrapper';
 import Sidebar from '../../src/components/ui/Sidebar';
 import { COLORS, SIZES } from '../../src/constants/colors';
+import { supabase } from '../../supabase/client';
 
-const FAVOURITES = [
-    { id: '1', type: 'Office', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486', icon: 'heart' },
-    { id: '2', type: 'Home', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486', icon: 'heart' },
-    { id: '3', type: 'Office', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486', icon: 'heart' },
-    { id: '4', type: 'Home', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486', icon: 'heart' },
-    { id: '5', type: 'Office', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486', icon: 'heart' },
-    { id: '6', type: 'Home', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486', icon: 'heart' },
-];
+// Data now fetched from Supabase favorite_locations table
 
 export default function FavouriteScreen() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [favourites, setFavourites] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    React.useEffect(() => {
+        fetchFavourites();
+    }, []);
+
+    const fetchFavourites = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const { data, error } = await supabase
+                .from('favorite_locations')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+
+            if (data) {
+                setFavourites(data);
+            }
+        } catch (error) {
+            console.error('Error fetching favourites:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <ScreenWrapper
@@ -26,7 +47,7 @@ export default function FavouriteScreen() {
             onMenuPress={() => setIsSidebarOpen(true)}
         >
             <FlatList
-                data={FAVOURITES}
+                data={favourites}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.listContent}
                 renderItem={({ item }) => (
@@ -36,7 +57,7 @@ export default function FavouriteScreen() {
                                 <Ionicons name="location" size={20} color={COLORS.primaryDark} />
                             </View>
                             <View style={styles.textContainer}>
-                                <Text style={styles.typeName}>{item.type}</Text>
+                                <Text style={styles.typeName}>{item.name}</Text>
                                 <Text style={styles.address} numberOfLines={1}>{item.address}</Text>
                             </View>
                         </View>
@@ -45,6 +66,14 @@ export default function FavouriteScreen() {
                         </TouchableOpacity>
                     </TouchableOpacity>
                 )}
+                ListEmptyComponent={
+                    !loading ? (
+                        <View style={{ alignItems: 'center', marginTop: 100 }}>
+                            <Ionicons name="heart-dislike-outline" size={60} color="#E5E7EB" />
+                            <Text style={{ color: '#9CA3AF', marginTop: 10 }}>No favorites yet</Text>
+                        </View>
+                    ) : null
+                }
             />
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
         </ScreenWrapper>

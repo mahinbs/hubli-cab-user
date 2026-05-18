@@ -8,9 +8,14 @@ import { COLORS } from '../../src/constants/colors';
 
 export default function PaymentSummaryScreen() {
     const router = useRouter();
-    const { name } = useLocalSearchParams();
+    const params = useLocalSearchParams();
+    const { name, fare } = params;
 
-    const carName = name as string || 'Mustang Shelby GT';
+    const carName = name as string || 'Toyota Prius';
+    const baseFare = parseFloat(fare as string) || 150;
+    const vat = Math.round(baseFare * 0.05);
+    const promo = 10;
+    const total = baseFare + vat - promo;
 
     return (
         <ScreenWrapper style={styles.container} showHeader title="Payment">
@@ -32,21 +37,21 @@ export default function PaymentSummaryScreen() {
                 <View style={styles.chargeSection}>
                     <Text style={styles.sectionTitle}>Charge</Text>
                     <View style={styles.chargeRow}>
-                        <Text style={styles.chargeLabel}>{carName.split(' ')[0]}/per hours</Text>
-                        <Text style={styles.chargeValue}>$200</Text>
+                        <Text style={styles.chargeLabel}>{carName.split(' ')[0]} Ride Fare</Text>
+                        <Text style={styles.chargeValue}>₹{baseFare}</Text>
                     </View>
                     <View style={styles.chargeRow}>
                         <Text style={styles.chargeLabel}>Vat (5%)</Text>
-                        <Text style={styles.chargeValue}>$20</Text>
+                        <Text style={styles.chargeValue}>₹{vat}</Text>
                     </View>
                     <View style={styles.chargeRow}>
                         <Text style={styles.chargeLabel}>Promo Code</Text>
-                        <Text style={styles.promoValue}>-$5</Text>
+                        <Text style={styles.promoValue}>-₹{promo}</Text>
                     </View>
                     <View style={styles.divider} />
                     <View style={styles.chargeRow}>
                         <Text style={styles.totalLabel}>Total</Text>
-                        <Text style={styles.totalValue}>$215</Text>
+                        <Text style={styles.totalValue}>₹{total}</Text>
                     </View>
                 </View>
 

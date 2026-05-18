@@ -1,18 +1,85 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import CustomButton from '../../src/components/ui/CustomButton';
 import ScreenWrapper from '../../src/components/ui/ScreenWrapper';
 import { COLORS, SIZES } from '../../src/constants/colors';
+import { supabase } from '../../supabase/client';
 
 export default function EditProfileScreen() {
     const router = useRouter();
-    const [name, setName] = useState('Nate Samson');
-    const [email, setEmail] = useState('nate@email.com');
-    const [phone, setPhone] = useState('880 1234 567 890');
+    const [name, setName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [gender, setGender] = useState('Male');
-    const [address, setAddress] = useState('2972 Westheimer Rd. Santa Ana, Illinois 85486');
+    const [address, setAddress] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [updating, setUpdating] = useState(false);
+
+    useEffect(() => {
+        loadProfile();
+    }, []);
+
+    const loadProfile = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single();
+                if (data) {
+                    setName(data.full_name || '');
+                    setEmail(data.email || '');
+                    setPhone(data.phone_number || '');
+                    setGender(data.nationality || 'Male');
+                    setAddress(data.complete_address || '');
+                }
+            }
+        } catch (err) {
+            console.error('Error loading profile:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleUpdate = async () => {
+        setUpdating(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                const { error } = await supabase
+                    .from('profiles')
+                    .update({
+                        full_name: name,
+                        email: email,
+                        phone_number: phone,
+                        nationality: gender,
+                        complete_address: address
+                    })
+                    .eq('id', user.id);
+                if (error) throw error;
+                router.back();
+            }
+        } catch (err: any) {
+            console.error('Error updating profile:', err);
+            alert('Failed to update profile: ' + err.message);
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <ScreenWrapper style={styles.container} showHeader title="Edit Profile">
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={COLORS.primaryDark} />
+                </View>
+            </ScreenWrapper>
+        );
+    }
 
     return (
         <ScreenWrapper style={styles.container} showHeader title="Edit Profile">
@@ -27,7 +94,7 @@ export default function EditProfileScreen() {
                             <Ionicons name="pencil" size={12} color="#FFFFFF" />
                         </TouchableOpacity>
                     </View>
-                    <Text style={styles.profileName}>{name}</Text>
+                    <Text style={styles.profileName}>{name || 'My Profile'}</Text>
                 </View>
 
                 <View style={styles.form}>
@@ -68,7 +135,10 @@ export default function EditProfileScreen() {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <TouchableOpacity style={styles.dropdown}>
+                        <TouchableOpacity 
+                            style={styles.dropdown}
+                            onPress={() => setGender(gender === 'Male' ? 'Female' : 'Male')}
+                        >
                             <Text style={styles.dropdownText}>{gender}</Text>
                             <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
                         </TouchableOpacity>
@@ -87,8 +157,9 @@ export default function EditProfileScreen() {
 
                     <CustomButton
                         title="Update"
-                        onPress={() => router.back()}
+                        onPress={handleUpdate}
                         style={styles.updateBtn}
+                        isLoading={updating}
                     />
                 </View>
             </ScrollView>

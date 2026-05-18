@@ -29,7 +29,7 @@ export default function FeedbackScreen() {
                     <Text style={styles.finalDesc}>Thank you for your valuable feedback and tip</Text>
                     <CustomButton
                         title="Back Home"
-                        onPress={() => router.replace('/(tabs)')}
+                        onPress={() => router.replace('/(tabs)/')}
                         style={styles.backHomeBtn}
                     />
                 </View>

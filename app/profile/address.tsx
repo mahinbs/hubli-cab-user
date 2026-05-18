@@ -1,33 +1,124 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import CustomButton from '../../src/components/ui/CustomButton';
 import ScreenWrapper from '../../src/components/ui/ScreenWrapper';
 import { COLORS, SIZES } from '../../src/constants/colors';
-
-const INITIAL_ADDRESSES = [
-    { id: '1', type: 'Office', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486' },
-    { id: '2', type: 'Office', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486' },
-    { id: '3', type: 'Office', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486' },
-    { id: '4', type: 'Office', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486' },
-    { id: '5', type: 'Office', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486' },
-    { id: '6', type: 'Office', address: '2972 Westheimer Rd. Santa Ana, Illinois 85486' },
-];
+import { supabase } from '../../supabase/client';
 
 export default function AddressScreen() {
-    const [addresses, setAddresses] = useState(INITIAL_ADDRESSES);
+    const [addresses, setAddresses] = useState<any[]>([]);
     const [showAddModal, setShowAddModal] = useState(false);
     const [name, setName] = useState('');
     const [detail, setDetail] = useState('');
+    const [loading, setLoading] = useState(true);
 
-    const handleAdd = () => {
-        if (name && detail) {
-            setAddresses([...addresses, { id: Date.now().toString(), type: name, address: detail }]);
+    useEffect(() => {
+        fetchAddresses();
+    }, []);
+
+    const fetchAddresses = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+            
+            // Try to load from favorite_locations
+            const { data, error } = await supabase
+                .from('favorite_locations')
+                .select('*')
+                .eq('user_id', user.id);
+            
+            if (!error && data && data.length > 0) {
+                setAddresses(data.map(item => ({
+                    id: item.id,
+                    type: item.name,
+                    address: item.address
+                })));
+            } else {
+                // Fallback: load serialized JSON from profiles.complete_address
+                const { data: profileData } = await supabase
+                    .from('profiles')
+                    .select('complete_address')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (profileData?.complete_address) {
+                    try {
+                        const parsed = JSON.parse(profileData.complete_address);
+                        if (Array.isArray(parsed)) {
+                            setAddresses(parsed);
+                            return;
+                        }
+                    } catch (e) {
+                        // Not JSON, just use as a single address if it has content
+                        if (profileData.complete_address.trim()) {
+                            setAddresses([{
+                                id: '1',
+                                type: 'Home',
+                                address: profileData.complete_address
+                            }]);
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching addresses:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAdd = async () => {
+        if (!name || !detail) return;
+        setLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const newAddr = { id: Date.now().toString(), type: name, address: detail };
+            const updatedAddresses = [...addresses, newAddr];
+
+            // 1. Try to insert into favorite_locations
+            const { error } = await supabase
+                .from('favorite_locations')
+                .insert({
+                    user_id: user.id,
+                    name: name,
+                    address: detail
+                });
+            
+            if (error) {
+                console.warn('favorite_locations insert failed (probably missing RLS policies). Falling back to profiles.complete_address:', error);
+                
+                // Fallback: save serialized JSON to profiles.complete_address
+                await supabase
+                    .from('profiles')
+                    .update({
+                        complete_address: JSON.stringify(updatedAddresses)
+                    })
+                    .eq('id', user.id);
+            }
+
+            setAddresses(updatedAddresses);
             setShowAddModal(false);
             setName('');
             setDetail('');
+        } catch (err) {
+            console.error('Error adding address:', err);
+        } finally {
+            setLoading(false);
         }
     };
+
+    if (loading && addresses.length === 0) {
+        return (
+            <ScreenWrapper style={styles.container} showHeader title="Address">
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={COLORS.primaryDark} />
+                </View>
+            </ScreenWrapper>
+        );
+    }
 
     return (
         <ScreenWrapper style={styles.container} showHeader title="Address">

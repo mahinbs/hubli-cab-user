@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -12,6 +12,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import ScreenWrapper from '../../src/components/ui/ScreenWrapper';
 import { COLORS, SIZES } from '../../src/constants/colors';
+import { subscribeToRideUpdates } from '../../supabase/rides';
+import { supabase } from '../../supabase/client';
 
 const { width } = Dimensions.get('window');
 
@@ -24,6 +26,8 @@ const PulseParams = {
 export default function ConnectingScreen() {
     const router = useRouter();
     const pulse = useSharedValue(0);
+    const params = useLocalSearchParams();
+    const { rideId, car_name, plate_number, color, driver_name, driver_phone } = params;
 
     useEffect(() => {
         pulse.value = withRepeat(
@@ -32,13 +36,49 @@ export default function ConnectingScreen() {
             false
         );
 
-        // Simulate 2s delay to find driver
-        const timer = setTimeout(() => {
-            router.replace('/booking/ride_confirmed');
-        }, 2000);
+        if (!rideId) {
+            // Fallback for demo if no rideId provided
+            const timer = setTimeout(() => {
+                router.replace('/booking/ride_confirmed');
+            }, 3000);
+            return () => clearTimeout(timer);
+        }
 
-        return () => clearTimeout(timer);
-    }, []);
+        // Real-time driver acceptance simulation for rapid testing
+        const autoAcceptTimer = setTimeout(async () => {
+            const { error } = await supabase
+                .from('rides')
+                .update({ status: 'accepted' })
+                .eq('id', rideId);
+            
+            if (error) {
+                console.error('Failed to auto-accept ride:', error);
+            }
+        }, 3000);
+
+        const subscription = subscribeToRideUpdates(rideId as string, (payload) => {
+            const updatedRide = payload.new;
+            if (updatedRide.status === 'accepted') {
+                clearTimeout(autoAcceptTimer);
+                router.replace({
+                    pathname: '/booking/ride_confirmed',
+                    params: { 
+                        rideId: rideId as string,
+                        car_name: (car_name as string) || '',
+                        plate_number: (plate_number as string) || '',
+                        color: (color as string) || '',
+                        driver_name: (driver_name as string) || '',
+                        driver_phone: (driver_phone as string) || ''
+                    }
+                });
+            }
+        });
+
+        return () => {
+            clearTimeout(autoAcceptTimer);
+            subscription.unsubscribe();
+        };
+    }, [rideId]);
 
     const animatedStyle = useAnimatedStyle(() => {
         const scale = interpolate(pulse.value, [0, 1], [0.8, 1.5]);

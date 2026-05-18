@@ -5,15 +5,64 @@ import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import CustomButton from '../../src/components/ui/CustomButton';
 import ScreenWrapper from '../../src/components/ui/ScreenWrapper';
 import { COLORS, SIZES } from '../../src/constants/colors';
+import { createRide } from '../../supabase/rides';
+import { supabase } from '../../supabase/client';
+import { Alert } from 'react-native';
 
 export default function BookingConfirmationScreen() {
     const router = useRouter();
-    const { name } = useLocalSearchParams();
+    const params = useLocalSearchParams();
+    const { name, type, plate_number, color, driver_id, driver_name, driver_phone, pickup, destination } = params;
 
-    const carName = name as string || 'Mustang Shelby GT';
+    const carName = name as string || 'Standard Ride';
+    const [loading, setLoading] = React.useState(false);
 
-    const handleConfirm = () => {
-        router.push('/booking/connecting');
+    const handleConfirm = async () => {
+        setLoading(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                Alert.alert("Error", "You must be logged in to book a ride");
+                router.push('/auth/login');
+                return;
+            }
+
+            // Insert dynamic ride linked to real registered driver details
+            const ride = await createRide({
+                rider_id: user.id,
+                driver_id: driver_id && !driver_id.includes('dummy') ? driver_id : null,
+                vehicle_type_id: type || 'sedan',
+                pickup_address: pickup || 'Current location',
+                destination_address: destination || 'Office',
+                pickup_latitude: 18.5204, 
+                pickup_longitude: 73.8567,
+                destination_latitude: 18.5204,
+                destination_longitude: 73.8567,
+                status: 'pending',
+                estimated_fare: 150,
+                final_fare: 150,
+                payment_method: 'Connected Wallet',
+                payment_status: 'unpaid',
+                otp: Math.floor(1000 + Math.random() * 9000).toString(), // Live verification OTP like Uber/Ola
+            });
+
+            router.push({
+                pathname: '/booking/connecting',
+                params: { 
+                    rideId: ride.id,
+                    car_name: carName,
+                    plate_number: plate_number || 'KA 01 AB 1234',
+                    color: color || 'White',
+                    driver_name: driver_name || 'Amit Kumar',
+                    driver_phone: driver_phone || ''
+                }
+            });
+        } catch (error: any) {
+            console.error('Ride creation failed:', error);
+            Alert.alert("Booking Failed", error.message || "Something went wrong");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -23,18 +72,18 @@ export default function BookingConfirmationScreen() {
                     <View style={styles.locationItem}>
                         <Ionicons name="location" size={20} color={COLORS.primaryDark} />
                         <View>
-                            <Text style={styles.label}>Current location</Text>
-                            <Text style={styles.value}>2972 Westheimer Rd. Santa Ana, Illinois 85486</Text>
+                            <Text style={styles.label}>Pickup location</Text>
+                            <Text style={styles.value} numberOfLines={2}>{pickup || "Current Location"}</Text>
                         </View>
                     </View>
                     <View style={styles.verticalLine} />
                     <View style={styles.locationItem}>
                         <Ionicons name="pin" size={20} color="#EF4444" />
                         <View>
-                            <Text style={styles.label}>Office</Text>
-                            <Text style={styles.value}>1901 Thornridge Cir. Shiloh, Hawaii 81063</Text>
+                            <Text style={styles.label}>Destination</Text>
+                            <Text style={styles.value} numberOfLines={2}>{destination || "Office"}</Text>
                         </View>
-                        <Text style={styles.distance}>1.1km</Text>
+                        <Text style={styles.distance}>1.5km</Text>
                     </View>
                 </View>
 
@@ -92,6 +141,7 @@ export default function BookingConfirmationScreen() {
                     title="Confirm Ride"
                     onPress={handleConfirm}
                     style={styles.confirmButton}
+                    isLoading={loading}
                 />
             </ScrollView>
         </ScreenWrapper>

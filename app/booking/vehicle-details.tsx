@@ -23,14 +23,34 @@ const FEATURES = [
 
 export default function VehicleDetailsScreen() {
     const router = useRouter();
-    const { name } = useLocalSearchParams();
+    const params = useLocalSearchParams();
+    const { name, type, plate_number, color, driver_id, driver_name, driver_phone, pickup, destination } = params;
 
-    const carName = name as string || 'Mustang Shelby GT';
+    const carName = name as string || 'Premium Sedan';
+
+    // Build specs and features dynamically if they were passed
+    const dynamicFeatures = [
+        { label: 'Model', value: (name as string) || 'Premium Ride' },
+        { label: 'License Plate', value: (plate_number as string) || 'KA-01-AB-1234' },
+        { label: 'Color', value: (color as string) || 'White' },
+        { label: 'Gear type', value: 'Automatic' },
+        { label: 'Capacity', value: '4 Passengers' }
+    ];
 
     const handleRideNow = () => {
         router.push({
             pathname: '/booking/confirmation',
-            params: { name: carName }
+            params: { 
+                name: carName,
+                type: (type as string) || 'sedan',
+                plate_number: (plate_number as string) || 'KA-01-AB-1234',
+                color: (color as string) || 'White',
+                driver_id: (driver_id as string) || '',
+                driver_name: (driver_name as string) || 'Amit Kumar',
+                driver_phone: (driver_phone as string) || '',
+                pickup: (pickup as string) || 'Current Location',
+                destination: (destination as string) || 'Office'
+            }
         });
     };
 
@@ -69,8 +89,8 @@ export default function VehicleDetailsScreen() {
 
                 <Text style={styles.sectionTitle}>Car features</Text>
                 <View style={styles.featuresCard}>
-                    {FEATURES.map((feature, index) => (
-                        <View key={feature.label} style={[styles.featureRow, index === FEATURES.length - 1 && styles.noBorder]}>
+                    {dynamicFeatures.map((feature, index) => (
+                        <View key={feature.label} style={[styles.featureRow, index === dynamicFeatures.length - 1 && styles.noBorder]}>
                             <Text style={styles.featureLabel}>{feature.label}</Text>
                             <Text style={styles.featureValue}>{feature.value}</Text>
                         </View>

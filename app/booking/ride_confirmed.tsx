@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HomeMap from '../../src/components/map/HomeMap';
 import { COLORS } from '../../src/constants/colors';
+import { supabase } from '../../supabase/client';
+import { subscribeToRideUpdates } from '../../supabase/rides';
 
 const { height } = Dimensions.get('window');
 
@@ -12,26 +14,92 @@ type RideStatus = 'ARRIVING' | 'ARRIVED' | 'STARTED' | 'COMPLETED';
 
 export default function LiveTrackingScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
+    const { rideId, car_name, plate_number, color, driver_name, driver_phone } = params;
     const insets = useSafeAreaInsets();
+    const [ride, setRide] = useState<any>(null);
     const [status, setStatus] = useState<RideStatus>('ARRIVING');
-    const [timer, setTimer] = useState(215); // 3:35 in seconds
+    const [timer, setTimer] = useState(300); // 5:00 mock
 
     useEffect(() => {
-        let statusTimer: ReturnType<typeof setTimeout>;
+        if (!rideId) return;
 
-        if (status === 'ARRIVING') {
-            statusTimer = setTimeout(() => setStatus('ARRIVED'), 5000);
-        } else if (status === 'ARRIVED') {
-            statusTimer = setTimeout(() => setStatus('STARTED'), 5000);
-        } else if (status === 'STARTED') {
-            statusTimer = setTimeout(() => {
+        const fetchRideDetails = async () => {
+            const { data, error } = await supabase
+                .from('rides')
+                .select('*, profiles!rides_driver_id_fkey(full_name, avatar_url)')
+                .eq('id', rideId)
+                .single();
+            
+            if (data) {
+                setRide(data);
+                updateUIStatus(data.status);
+            }
+        };
+
+        fetchRideDetails();
+
+        // 1. Real-time Simulator: Move ride to 'ongoing' in 6 seconds
+        const ongoingTimer = setTimeout(async () => {
+            const { error } = await supabase
+                .from('rides')
+                .update({ status: 'ongoing' })
+                .eq('id', rideId);
+            
+            if (error) {
+                console.error('Failed to transition to ongoing:', error);
+            }
+        }, 6000);
+
+        // 2. Real-time Simulator: Move ride to 'completed' in 12 seconds
+        const completedTimer = setTimeout(async () => {
+            const { error } = await supabase
+                .from('rides')
+                .update({ status: 'completed' })
+                .eq('id', rideId);
+            
+            if (error) {
+                console.error('Failed to transition to completed:', error);
+            }
+        }, 12000);
+
+        const subscription = subscribeToRideUpdates(rideId as string, (payload) => {
+            const updatedRide = payload.new;
+            setRide((prev: any) => ({ ...prev, ...updatedRide }));
+            updateUIStatus(updatedRide.status);
+        });
+
+        return () => {
+            clearTimeout(ongoingTimer);
+            clearTimeout(completedTimer);
+            subscription.unsubscribe();
+        };
+    }, [rideId]);
+
+    const updateUIStatus = (dbStatus: string) => {
+        switch (dbStatus) {
+            case 'accepted': 
+                setStatus('ARRIVING'); 
+                break;
+            case 'ongoing': 
+                setStatus('STARTED'); 
+                break;
+            case 'completed': 
                 setStatus('COMPLETED');
-                router.replace('/booking/payment-summary');
-            }, 5000);
+                setTimeout(() => {
+                    router.replace({
+                        pathname: '/booking/payment-summary',
+                        params: { 
+                            name: (car_name as string) || 'Toyota Prius', 
+                            fare: ride?.fare || '150' 
+                        }
+                    });
+                }, 2000);
+                break;
+            default: 
+                break;
         }
-
-        return () => clearTimeout(statusTimer);
-    }, [status]);
+    };
 
     useEffect(() => {
         if (status === 'ARRIVING' && timer > 0) {
@@ -80,7 +148,7 @@ export default function LiveTrackingScreen() {
 
                 {/* Header Actions */}
                 <View style={[styles.header, { top: insets.top + 10 }]}>
-                    <TouchableOpacity style={styles.topButton} onPress={() => router.replace('/(tabs)')}>
+                    <TouchableOpacity style={styles.topButton} onPress={() => router.replace('/(tabs)/')}>
                         <Ionicons name="menu" size={24} color="#1F2937" />
                     </TouchableOpacity>
                     <View style={styles.topRightActions}>
@@ -101,17 +169,35 @@ export default function LiveTrackingScreen() {
 
             {/* Bottom Sheet Card */}
             <View style={[styles.bottomCard, { paddingBottom: insets.bottom + 20 }]}>
+                <View style={styles.statusHeader}>
+                    <Text style={styles.statusTitle}>
+                        {status === 'ARRIVING' ? 'Captain on the way' : 
+                         status === 'ARRIVED' ? 'Captain has arrived' : 
+                         'Heading to destination'}
+                    </Text>
+                    {ride?.otp && status === 'ARRIVING' && (
+                        <View style={styles.otpContainer}>
+                            <Text style={styles.otpLabel}>PIN: </Text>
+                            {ride.otp.split('').map((digit, i) => (
+                                <View key={i} style={styles.otpDigit}>
+                                    <Text style={styles.otpText}>{digit}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+                </View>
+
                 <View style={styles.driverInfo}>
                     <Image
-                        source={{ uri: 'https://img.freepik.com/free-photo/handsome-young-man-with-new-haircut_273609-12182.jpg' }}
+                        source={{ uri: ride?.profiles?.avatar_url || 'https://img.freepik.com/free-photo/handsome-young-man-with-new-haircut_273609-12182.jpg' }}
                         style={styles.driverAvatar}
                     />
                     <View style={styles.driverDetails}>
-                        <Text style={styles.driverName}>Sergio Ramasis</Text>
-                        <Text style={styles.carModel}>{getDistanceText()}</Text>
+                        <Text style={styles.driverName}>{ride?.profiles?.full_name || (driver_name as string) || 'Finding Driver...'}</Text>
+                        <Text style={styles.carModel}>{(plate_number as string) || 'KA 03 MX 7777'} • {(car_name as string) || 'Toyota Prius'}</Text>
                         <View style={styles.ratingRow}>
                             <Ionicons name="star" size={14} color={COLORS.primaryDark} />
-                            <Text style={styles.ratingText}>4.9 (531 reviews)</Text>
+                            <Text style={styles.ratingText}>{ride?.profiles?.rating || '4.9'}</Text>
                         </View>
                     </View>
                     <Image
@@ -120,32 +206,34 @@ export default function LiveTrackingScreen() {
                     />
                 </View>
 
+                <View style={styles.actionButtons}>
+                    <TouchableOpacity style={styles.circularButton} onPress={() => router.push('/booking/calling')}>
+                        <Ionicons name="call" size={20} color="#6B7280" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.messageContainer} onPress={() => router.push('/booking/chat')}>
+                        <Ionicons name="chatbubble-ellipses" size={20} color="#6B7280" />
+                        <Text style={styles.messageText}>Message {ride?.profiles?.full_name?.split(' ')[0] || (driver_name as string)?.split(' ')[0] || 'Captain'}</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <View style={styles.paymentMethod}>
                     <View>
                         <Text style={styles.paymentLabel}>Payment method</Text>
                         <View style={styles.methodRow}>
                             <Ionicons name="card" size={20} color="#1F2937" />
-                            <Text style={styles.methodText}>**** **** **** 8970</Text>
+                            <Text style={styles.methodText}>Connected Wallet</Text>
                         </View>
                     </View>
-                    <Text style={styles.price}>$220.00</Text>
+                    <Text style={styles.price}>₹{ride?.fare || '0'}</Text>
                 </View>
 
-                <View style={styles.bottomActions}>
-                    <TouchableOpacity style={styles.iconAction} onPress={() => router.push('/booking/chat')}>
-                        <Ionicons name="chatbubble-ellipses-outline" size={22} color={COLORS.primaryDark} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconAction} onPress={() => router.push('/booking/calling')}>
-                        <Ionicons name="call-outline" size={22} color={COLORS.primaryDark} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.cancelButton, (status === 'STARTED' || status === 'COMPLETED') && styles.disabledButton]}
-                        onPress={handleCancel}
-                        disabled={status === 'STARTED' || status === 'COMPLETED'}
-                    >
-                        <Text style={styles.cancelText}>Cancel Ride</Text>
-                    </TouchableOpacity>
-                </View>
+                <TouchableOpacity
+                    style={[styles.cancelButtonFull, (status === 'STARTED' || status === 'COMPLETED') && styles.disabledButton]}
+                    onPress={handleCancel}
+                    disabled={status === 'STARTED' || status === 'COMPLETED'}
+                >
+                    <Text style={styles.cancelText}>Cancel Ride</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -217,10 +305,46 @@ const styles = StyleSheet.create({
         shadowRadius: 20,
         elevation: 10,
     },
+    statusHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    statusTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
+    otpContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    otpLabel: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontWeight: '600',
+    },
+    otpDigit: {
+        width: 24,
+        height: 24,
+        borderRadius: 4,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    otpText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
     driverInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: 20,
     },
     driverAvatar: {
         width: 60,
@@ -255,16 +379,46 @@ const styles = StyleSheet.create({
         width: 80,
         height: 50,
     },
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 20,
+    },
+    circularButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    messageContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        paddingHorizontal: 16,
+    },
+    messageText: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
     paymentMethod: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 20,
+        paddingVertical: 15,
         borderTopWidth: 1,
         borderTopColor: '#F3F4F6',
         borderBottomWidth: 1,
         borderBottomColor: '#F3F4F6',
-        marginBottom: 24,
+        marginBottom: 20,
     },
     paymentLabel: {
         fontSize: 12,
@@ -286,21 +440,8 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#1F2937',
     },
-    bottomActions: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    iconAction: {
-        width: 50,
-        height: 50,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: COLORS.primaryDark,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    cancelButton: {
-        flex: 1,
+    cancelButtonFull: {
+        width: '100%',
         backgroundColor: COLORS.primary,
         borderRadius: 12,
         alignItems: 'center',

@@ -8,6 +8,7 @@ import Animated, {
   withSpring
 } from 'react-native-reanimated';
 import { COLORS } from '../src/constants/colors';
+import { getCurrentSession } from '../supabase/auth';
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -18,11 +19,24 @@ export default function SplashScreen() {
     scale.value = withSpring(1, { damping: 10, stiffness: 100 });
     opacity.value = withDelay(300, withSpring(1));
 
-    const timer = setTimeout(() => {
-      router.replace('/onboarding');
-    }, 3000);
+    const checkAuthAndRedirect = async () => {
+      try {
+        const session = await getCurrentSession();
+        // Give the splash animation some time to play (min 2 seconds)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        if (session) {
+          router.replace('/(tabs)/');
+        } else {
+          router.replace('/onboarding');
+        }
+      } catch (error) {
+        console.error('Session check failed:', error);
+        router.replace('/onboarding');
+      }
+    };
 
-    return () => clearTimeout(timer);
+    checkAuthAndRedirect();
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
