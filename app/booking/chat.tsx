@@ -1,19 +1,51 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useState, useEffect } from 'react';
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView, Platform } from 'react-native';
 import ScreenWrapper from '../../src/components/ui/ScreenWrapper';
 import { COLORS } from '../../src/constants/colors';
-
-const MOCK_MESSAGES = [
-    { id: '1', text: 'Good Evening!', time: '9:20 pm', isUser: false },
-    { id: '2', text: 'Welcome to Car2go Customer Service', time: '9:25 pm', isUser: false },
-    { id: '3', text: 'Welcome to Car2go Customer Service', time: '9:29 pm', isUser: false },
-];
+import { getMessages, sendMessage, subscribeToMessages } from '../../supabase/chat';
+import { useAuthStore } from '../../store/authStore';
 
 export default function ChatScreen() {
     const router = useRouter();
-    const [message, setMessage] = useState('');
+    const { rideId } = useLocalSearchParams();
+    const { session } = useAuthStore();
+    const [messages, setMessages] = useState<any[]>([]);
+    const [inputText, setInputText] = useState('');
+
+    useEffect(() => {
+        if (!rideId) return;
+
+        fetchMessages();
+
+        const subscription = subscribeToMessages(rideId as string, (payload) => {
+            setMessages((prev) => [...prev, payload.new]);
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, [rideId]);
+
+    const fetchMessages = async () => {
+        try {
+            const data = await getMessages(rideId as string);
+            setMessages(data || []);
+        } catch (error) {
+            console.error('Error fetching messages:', error);
+        }
+    };
+
+    const handleSend = async () => {
+        if (!inputText.trim() || !session?.user || !rideId) return;
+        try {
+            await sendMessage(rideId as string, session.user.id, inputText.trim());
+            setInputText('');
+        } catch (error) {
+            console.error('Error sending message:', error);
+        }
+    };
 
     return (
         <ScreenWrapper style={styles.container} showHeader title="Chat">
@@ -21,40 +53,50 @@ export default function ChatScreen() {
                 <View style={styles.driverInfo}>
                     <View style={styles.avatarMini} />
                     <View>
-                        <Text style={styles.driverNameMini}>Sergio Ramasis</Text>
+                        <Text style={styles.driverNameMini}>Captain</Text>
                         <Text style={styles.statusMini}>Online</Text>
                     </View>
                 </View>
             </View>
 
-            <FlatList
-                data={MOCK_MESSAGES}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.chatContent}
-                renderItem={({ item }) => (
-                    <View style={[styles.messageBubble, item.isUser ? styles.userBubble : styles.driverBubble]}>
-                        <Text style={[styles.messageText, item.isUser ? styles.userText : styles.driverText]}>
-                            {item.text}
-                        </Text>
-                        <Text style={styles.messageTime}>{item.time}</Text>
-                    </View>
-                )}
-            />
-
-            <View style={styles.inputBar}>
-                <TouchableOpacity style={styles.attachButton}>
-                    <Ionicons name="add" size={24} color="#6B7280" />
-                </TouchableOpacity>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Type your message"
-                    value={message}
-                    onChangeText={setMessage}
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                flex={1}
+            >
+                <FlatList
+                    data={messages}
+                    keyExtractor={(item) => item.id}
+                    contentContainerStyle={styles.chatContent}
+                    renderItem={({ item }) => {
+                        const isUser = session?.user?.id === item.sender_id;
+                        return (
+                            <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.driverBubble]}>
+                                <Text style={[styles.messageText, isUser ? styles.userText : styles.driverText]}>
+                                    {item.message}
+                                </Text>
+                                <Text style={styles.messageTime}>
+                                    {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                            </View>
+                        );
+                    }}
                 />
-                <TouchableOpacity style={styles.sendButton}>
-                    <Ionicons name="send" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-            </View>
+
+                <View style={styles.inputBar}>
+                    <TouchableOpacity style={styles.attachButton}>
+                        <Ionicons name="add" size={24} color="#6B7280" />
+                    </TouchableOpacity>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Type your message"
+                        value={inputText}
+                        onChangeText={setInputText}
+                    />
+                    <TouchableOpacity style={styles.sendButton} onPress={handleSend}>
+                        <Ionicons name="send" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
         </ScreenWrapper>
     );
 }

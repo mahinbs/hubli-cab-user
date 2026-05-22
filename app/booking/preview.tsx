@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import HomeMap from '../../src/components/map/HomeMap';
 import CustomButton from '../../src/components/ui/CustomButton';
 import { COLORS, SIZES } from '../../src/constants/colors';
 import { VEHICLE_TYPES } from '../../src/constants/mockData';
+import { createRide } from '../../supabase/rides';
+import { useAuthStore } from '../../store/authStore';
 
 const { height } = Dimensions.get('window');
 
@@ -13,11 +15,36 @@ export default function RoutePreviewScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const { destination } = params;
+    const { session } = useAuthStore();
 
     const [selectedVehicle, setSelectedVehicle] = useState(VEHICLE_TYPES[0].id);
+    const [loading, setLoading] = useState(false);
 
-    const handleBookRide = () => {
-        router.push('/booking/connecting');
+    const handleBookRide = async () => {
+        if (!session?.user) {
+            router.push('/auth/login');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const vehicle = VEHICLE_TYPES.find(v => v.id === selectedVehicle);
+            const rideData = {
+                rider_id: session.user.id,
+                vehicle_type_id: selectedVehicle,
+                pickup_address: 'Current Location', // This should be dynamic based on user selection
+                destination_address: destination || 'Unknown Destination',
+                status: 'pending',
+                estimated_fare: vehicle?.baseFare || 0
+            };
+            const newRide = await createRide(rideData);
+            router.push({ pathname: '/booking/connecting', params: { rideId: newRide.id } });
+        } catch (error) {
+            console.error('Failed to create ride:', error);
+            // Optionally show error to user
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
