@@ -1,0 +1,66 @@
+
+> hublicab-customer@1.0.0 build:web
+> npx expo export -p web
+
+env: load .env
+env: export EXPO_PUBLIC_SUPABASE_URL EXPO_PUBLIC_SUPABASE_ANON_KEY
+React Compiler enabled
+Starting Metro Bundler
+Static rendering is enabled. Learn more: https://docs.expo.dev/router/reference/static-rendering/
+λ Bundled 1044ms node_modules/expo-router/node/render.js (637 modules)
+Web Bundled 1266ms node_modules/expo-router/entry.js (1192 modules)
+Web node_modules/expo-router/entry.js ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (1192/1192)
+
+› web bundles (1):
+_expo/static/js/web/entry-5c64e898dba6eb0c2f918ba8d694ecf1.js (2.7 MB)
+
+› Static routes (47):
+/about (31.8 kB)
+/ (index) (30.5 kB)
+/offer (41 kB)
+/wallet (42.1 kB)
+/support (34.4 kB)
+/account (41.5 kB)
+/settings (35.9 kB)
+/_sitemap (28.7 kB)
+/auth/otp (32.7 kB)
+/favourite (40.8 kB)
+/+not-found (29.2 kB)
+/auth (30.9 kB)
+/auth/login (33 kB)
+/auth/signup (34.9 kB)
+/(tabs) (42.1 kB)
+/(tabs)/offer (41 kB)
+/auth/profile (33.8 kB)
+/booking/chat (31.1 kB)
+/profile/edit (30.4 kB)
+/notifications (33.5 kB)
+/(tabs)/wallet (42.1 kB)
+/booking (31.6 kB)
+/(tabs)/account (41.5 kB)
+/booking/calling (30.8 kB)
+/booking/preview (33.2 kB)
+/profile/address (30.4 kB)
+/profile/history (33.9 kB)
+/(tabs)/favourite (40.8 kB)
+/booking/feedback (34.8 kB)
+/onboarding (33.8 kB)
+/profile/complain (30.9 kB)
+/wallet/add-money (31.5 kB)
+/auth/set-password (31.9 kB)
+/booking/connecting (30.1 kB)
+/location-permission (30.8 kB)
+/booking/cancel-ride (32.5 kB)
+/booking/confirmation (33.7 kB)
+/booking/payment-method (34.4 kB)
+/booking/ride_confirmed (33.1 kB)
+/booking/select-address (31.6 kB)
+/booking/available-rides (30.1 kB)
+/booking/payment-summary (33.1 kB)
+/booking/vehicle-details (34.5 kB)
+/auth/forgot-password/otp (32.3 kB)
+/auth/forgot-password (31.7 kB)
+/auth/forgot-password/input (30.9 kB)
+/booking/transport-selection (31.1 kB)
+
+Exported: dist
